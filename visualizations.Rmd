@@ -1,0 +1,120 @@
+---
+title: "American Housing Survey (2015) Exploratory Data Analysis"
+author: "Sarah McDougald"
+date: "April 7, 2018"
+output: html_document
+---
+
+## Project Background
+
+This project was submitted to an undergraduate-level data science class. All of the contents of this original project were created by me and posted to Github with permission of the instructor. The prompt for the class was to find a source of data on the Internet, prepare and clean the data, and explore the data with visualizations.
+
+## Data Background
+
+This project's goal is to locate available data resources on the Internet and explore the data through visualizations. I decided to look into the American Housing Survey (AHS), a national survey run by the U.S. Census Bureau about every two years. For my data, I chose to look into data at the household level for the year 2015, located in the National Public Use File (or "PUF") for that year. This data is publicly available and can be found here: https://www.census.gov/programs-surveys/ahs/data/2015/ahs-2015-public-use-file--puf-/ahs-2015-national-public-use-file--puf-.html
+<br>
+
+## Data Preparation
+
+Before visualizing the data, I decided to clean the data, which primarily required the removal of extraneous variables. While not strictly necessary, it helped me become more acquainted with the variables found in this dataset. Extraneous variables all started with "J" and were apparently, according to the codebook for the 2015 AHS, so marked because they held integer values for different types of edit flags, which the Census workers who curated the data used to keep track of which variables to edit. (This explanation took some digging.) See the 2015 AHS codebook for more details: https://www.census.gov/cgi-bin/nbroker?_service=sas_serv1&_debug=0&_program=cedr.sasapp_main.sas&s_output=mpdf&s_orderBy=topic_number%20asc,subtopic_number%20asc,variable_number%20asc&menu=variable_table&s_appName=ahsdict&s_searchvalue=JHCPAY&s_year=2015&s_topic=&s_variable=&s_minicode=E_2015&s_currenttopic=&s_currentvar=
+
+A more detailed codebook search engine, for most or all years of the AHS survey, can be found here:
+https://www.census.gov/data-tools/demo/codebook/ahs/ahsdict.html?s_appName=ahsdict&s_searchvalue=TENURE&s_year=2015&s_minicode=E_2015
+
+
+Therefore, my data cleaning consisted of removing these variables and checking that I was not removing any actual, non-extraneous variables that happened to start with J (of which there were none, it turned out, in the Households dataset). There are more details on the process in the included .R file.
+<br>
+
+## Exploration and Visualizations
+
+There were 69,493 households surveyed in the 2015 AHS data for households, and these households were examined in 791 variables or characteristics. 
+
+Data and library loading: -- *can remove this and hide the code box.*
+
+```{r, warning=FALSE, message=FALSE}
+# Data and library loading:
+
+library(tidyverse)
+
+# Original dataset, not yet cleaned:
+#ahs_data <- readRDS(file = "ahs_2015_data")
+
+# Cleaned dataset, extraneous variables removed:
+ahs_household <- read_rds(path = "ahs_household")
+```
+
+### Households Owned vs. Rented
+
+First, it's useful to get a sense of how many of these households are owned or rented. The graph below reflects the amount of households surveyed in the 2015 AHS that were owned or rented, reflected by the `TENURE` variable. The four possible answer choices reflect:
+1. The household was owned or being bought
+2. The household was rented
+3. The household was occupied "without payment of rent"
+-9. Likely a value for missing responses. (This was unspecified in either codebook; see codebook links above.)
+
+From the graph, it appears that about 35,000 households were owned-- a plurality-- and almost 25,000 were rented. A very small proportion of households were unowned and occupied without rent; one wonders what the variety of situations was like for these households.
+
+
+```{r, warning=FALSE, message=FALSE}
+
+ahs_household %>%
+  ggplot(aes(x = TENURE, fill = TENURE)) +
+  geom_bar() +
+  xlab("Response Number") +
+  ylab("Total households") + 
+  ggtitle("Owned, Rented or Otherwise Occupied - by Household") +
+  scale_fill_manual(values = c("darkgrey", "darkblue", "red", "darkgreen"))
+
+# scale_fill_manual() lets you decide on particular color shades for the `fill` parameter in `ggplot()`.
+
+```
+<br>
+
+### Household Income Distribution, Owned vs. Rented
+
+Next, one may examine household income using the `HINCP` variable. A breakdown by rent type is included, in order to illuminate the types of household that are most common at different points in the household income distribution.
+
+The graph below spans a household income distribution of _greater than $0_ to _less than $500,000_. The upper limit was chosen to allow better viewing of the graph distribution, since there are only a few outliers beyond that point (and even data points at that limit could well be considered outliers). The lower limit was also chosen to allow a better view of the overall distribution; only 1,228 households reported having $0 in household income, but all of the households that did not report income were otherwise marked as having no household income.
+
+Overall, the household income distribution is decidedly skewed right, with a long tail and probably outliers at the far end (likely reflecting the US's large income inequality gap). It appears from the colors, denoting the option responses in the TENURE` variable-- i.e. whether the household is owned, rented, etc.-- that _lower-income households tend to rent_. For the colors below, pink reflects option 1, "owned or being bought", green reflects option 2, "rented", and purple reflects option 3, "occupied but not paying rent".)
+
+
+```{r, warning=FALSE, message=FALSE}
+# Prep work first, so this doesn't look unseeable:
+# - Exclude households that make above $500k per year
+# - Exclude households that make $0 per year, exactly.
+# Make sure to comment on these exclusions, and how many households made $0 per year.
+
+ahs_household_income <- ahs_household %>%
+  filter(HINCP < 500000) %>%
+  filter(HINCP > 0)
+
+ahs_zero_income <- ahs_household %>%
+  filter(HINCP == 0)
+num_zero_income <- ahs_zero_income %>%
+  summarise("Total households with 0 income" = nrow(ahs_zero_income))
+num_zero_income
+
+ahs_household_income %>% 
+  ggplot(aes(x = HINCP, color = TENURE)) +
+  geom_bar() +
+  xlab("Household income (in dollars)") +
+  ylab("Total households") +
+  ggtitle("Household Income Distribution, Owned vs. Rented") #+
+  #scale_fill_manual(values = c("darkgrey", "darkblue", "red", "darkgreen"))
+
+# Note: could not get colors to display properly, when colors were assigned to the same as those in the first graph.
+
+```
+
+<br>
+
+
+
+
+
+
+
+
+
+
+
